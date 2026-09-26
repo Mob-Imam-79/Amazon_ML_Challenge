@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Datasets and outputs
+dataset/
+output/
+*.tsv
+*.csv
+*.log
+
+# Models and heavy artifacts
+model_artifacts/
+saved_models/
+*.pkl
+*.model
+
+# EDA output
+eda_output/
