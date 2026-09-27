@@ -1,0 +1,28 @@
+{
+  "threshold": 0.8800000000000001,
+  "features": [
+    "name_jaro_winkler",
+    "name_levenshtein",
+    "name_token_sort",
+    "name_token_set",
+    "name_partial",
+    "name_jaccard_3gram",
+    "name_jaccard_4gram",
+    "name_token_overlap",
+    "name_prefix_len",
+    "name_len_ratio",
+    "name_len_diff",
+    "addr_levenshtein",
+    "addr_token_sort",
+    "addr_token_set",
+    "addr_token_overlap",
+    "addr_number_match",
+    "addr_len_ratio",
+    "addr_missing",
+    "tfidf_score",
+    "name_avg_sim",
+    "name_max_sim",
+    "addr_avg_sim",
+    "combined_score"
+  ]
+}

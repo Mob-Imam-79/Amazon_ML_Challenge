@@ -176,7 +176,7 @@ def run_train(sample_size=None, blocking_topn=20, blocking_threshold=0.25):
     return model, best_threshold
 
 
-def run_predict(model=None, threshold=None):
+def run_predict(model=None, threshold=None, shard='1/1'):
     """
     Generate predictions on test data:
       1. Load & preprocess test data
@@ -203,6 +203,16 @@ def run_predict(model=None, threshold=None):
     # ── 1. Load test data ─────────────────────────────────────────────────
     hr("1 · Loading test data")
     s1, s2, s3 = load_data(TEST_DIR, 'test')
+    
+    if '/' in shard:
+        shard_idx, num_shards = map(int, shard.split('/'))
+        if num_shards > 1:
+            chunk_size = (len(s1) + num_shards - 1) // num_shards
+            start_idx = (shard_idx - 1) * chunk_size
+            end_idx = min(start_idx + chunk_size, len(s1))
+            s1 = s1.iloc[start_idx:end_idx]
+            print(f"  ⚡ Running Shard {shard_idx}/{num_shards}")
+            
     print(f"  S1: {len(s1):,}  S2: {len(s2):,}  S3: {len(s3):,}")
 
     # ── 2. Preprocess ─────────────────────────────────────────────────────
@@ -246,7 +256,13 @@ def run_predict(model=None, threshold=None):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     # matching_results.tsv
-    matching_path = os.path.join(OUTPUT_DIR, 'matching_results.tsv')
+    shard_suffix = ""
+    if '/' in shard:
+        shard_idx, num_shards = map(int, shard.split('/'))
+        if num_shards > 1:
+            shard_suffix = f"_shard_{shard_idx}_of_{num_shards}"
+            
+    matching_path = os.path.join(OUTPUT_DIR, f'matching_results{shard_suffix}.tsv')
     results.to_csv(matching_path, sep='\t', index=False)
     print(f"  ✅ {matching_path}")
 
@@ -267,7 +283,7 @@ def run_predict(model=None, threshold=None):
         cand_grouped = pd.concat([cand_grouped, cand_missing_rows], ignore_index=True)
 
     cand_grouped = cand_grouped.sort_values('source1_entity_id').reset_index(drop=True)
-    cand_path = os.path.join(OUTPUT_DIR, 'candidate_pairs.tsv')
+    cand_path = os.path.join(OUTPUT_DIR, f'candidate_pairs{shard_suffix}.tsv')
     cand_grouped.to_csv(cand_path, sep='\t', index=False)
     print(f"  ✅ {cand_path}")
 
@@ -291,6 +307,8 @@ def main():
                         help='Max candidates per S1 entity from blocking')
     parser.add_argument('--blocking-threshold', type=float, default=0.30,
                         help='Min TF-IDF cosine similarity for blocking')
+    parser.add_argument('--shard', type=str, default='1/1',
+                        help='Shard the S1 dataset for distributed inference (e.g. "1/4")')
     args = parser.parse_args()
 
     print(f"\n  Pipeline mode: {args.mode}")
@@ -308,7 +326,7 @@ def main():
         )
 
     if args.mode in ('predict', 'full'):
-        run_predict(model=model, threshold=threshold)
+        run_predict(model=model, threshold=threshold, shard=args.shard)
 
 
 if __name__ == '__main__':

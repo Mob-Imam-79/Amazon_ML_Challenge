@@ -13,10 +13,15 @@ output/
 *.log
 
 # Models and heavy artifacts
-model_artifacts/
 saved_models/
 *.pkl
 *.model
+!code/business_entity_resolution/src/model_artifacts/
+!code/business_entity_resolution/src/model_artifacts/**
 
 # EDA output
 eda_output/
+
+# System & Archives
+.DS_Store
+*.zip
