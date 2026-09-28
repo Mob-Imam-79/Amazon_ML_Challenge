@@ -6,6 +6,7 @@ import re
 import numpy as np
 import pandas as pd
 from rapidfuzz import fuzz, distance
+from rapidfuzz.distance import JaroWinkler
 import jellyfish
 import time
 
@@ -73,7 +74,6 @@ def _len_ratio(s1: str, s2: str) -> float:
         return 0.0
     return min(l1, l2) / max(l1, l2)
 
-
 def compute_pair_features(row) -> dict:
     """
     Compute all pairwise features for a candidate pair.
@@ -91,7 +91,7 @@ def compute_pair_features(row) -> dict:
     features = {}
 
     # ── Name features ─────────────────────────────────────────────────────
-    features['name_jaro_winkler'] = jellyfish.jaro_winkler_similarity(name1, name2) if name1 and name2 else 0.0
+    features['name_jaro_winkler'] = JaroWinkler.similarity(name1, name2) if name1 and name2 else 0.0
     features['name_levenshtein'] = fuzz.ratio(name1, name2) / 100.0
     features['name_token_sort'] = fuzz.token_sort_ratio(name1, name2) / 100.0
     features['name_token_set'] = fuzz.token_set_ratio(name1, name2) / 100.0
@@ -170,24 +170,23 @@ def compute_features_batch(candidates_df, s1_df, s2s3_df, batch_size=100_000):
         end = min(start + batch_size, n_total)
         batch = candidates_df.iloc[start:end]
 
-        batch_features = []
-        for _, row in batch.iterrows():
-            s1_id = row['s1_entity_id']
-            cand_id = row['candidate_entity_id']
+        batch_s1_ids = batch['s1_entity_id'].values
+        batch_cand_ids = batch['candidate_entity_id'].values
+        batch_tfidf = batch['tfidf_score'].values
 
+        batch_features = []
+        for s1_id, cand_id, tfidf in zip(batch_s1_ids, batch_cand_ids, batch_tfidf):
             s1_data = s1_lookup.get(s1_id, {})
             cand_data = s2s3_lookup.get(cand_id, {})
 
             feat_row = {
-                's1_entity_id': s1_id,
-                'candidate_entity_id': cand_id,
                 'name_norm_s1': s1_data.get('name_norm', ''),
                 'name_norm_cand': cand_data.get('name_norm', ''),
                 'addr_norm_s1': s1_data.get('addr_norm', ''),
                 'addr_norm_cand': cand_data.get('addr_norm', ''),
                 'addr_numbers_s1': s1_data.get('addr_numbers', ''),
                 'addr_numbers_cand': cand_data.get('addr_numbers', ''),
-                'tfidf_score': row['tfidf_score'],
+                'tfidf_score': tfidf,
             }
 
             features = compute_pair_features(feat_row)
